@@ -4,9 +4,17 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
+async function checkPermission(tournamentId: string, userId: string) {
+  const perm = await prisma.permission.findFirst({
+    where: { tournamentId, userId },
+  });
+  if (!perm) throw new Error("Unauthorized");
+}
+
 export async function createMatch(tournamentId: string, formData: FormData) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
+  await checkPermission(tournamentId, user.id);
 
   const homeTeamId = formData.get("homeTeamId") as string;
   const awayTeamId = formData.get("awayTeamId") as string;
@@ -43,6 +51,7 @@ export async function updateMatchResult(
 ) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
+  await checkPermission(tournamentId, user.id);
 
   const homeScore = formData.get("homeScore") as string;
   const awayScore = formData.get("awayScore") as string;
@@ -95,6 +104,7 @@ export async function updateMatchResult(
 export async function deleteMatch(matchId: string, tournamentId: string) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
+  await checkPermission(tournamentId, user.id);
 
   await prisma.match.delete({ where: { id: matchId } });
   revalidatePath(`/admin/tournaments/${tournamentId}/matches`);
@@ -106,6 +116,7 @@ export async function deleteMatch(matchId: string, tournamentId: string) {
 export async function generateLeagueMatches(tournamentId: string) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
+  await checkPermission(tournamentId, user.id);
 
   const entries = await prisma.entry.findMany({
     where: { tournamentId },
@@ -163,6 +174,7 @@ export async function generateLeagueMatches(tournamentId: string) {
 export async function generateBracket(tournamentId: string) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
+  await checkPermission(tournamentId, user.id);
 
   const tournament = await prisma.tournament.findUnique({
     where: { id: tournamentId },

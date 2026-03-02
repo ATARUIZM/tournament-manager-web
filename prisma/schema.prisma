@@ -47,6 +47,9 @@ model Tournament {
   losePoints  Int             @default(0) @map("lose_points")
   // トーナメント設定
   thirdPlaceMatch Boolean     @default(false) @map("third_place_match")
+  // 公開設定
+  isPublic     Boolean         @default(true) @map("is_public")
+  viewPassword String?         @map("view_password")
   // 将来のマルチテナント対応
   ownerOrgId  String?         @map("owner_org_id")
   createdAt   DateTime        @default(now()) @map("created_at")

@@ -105,6 +105,36 @@ export function TournamentForm({ tournament, action, submitLabel }: Props) {
       </div>
       {tournament && (
         <fieldset className="border rounded-lg p-4">
+          <legend className="text-sm font-medium px-2">公開設定</legend>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium w-24">公開状態</label>
+              <select
+                name="isPublic"
+                defaultValue={tournament.isPublic ? "true" : "false"}
+                className="border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="true">公開</option>
+                <option value="false">非公開</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                閲覧パスワード（設定すると入力者のみ閲覧可）
+              </label>
+              <input
+                type="text"
+                name="viewPassword"
+                defaultValue={tournament.viewPassword || ""}
+                placeholder="未設定の場合は空欄"
+                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+        </fieldset>
+      )}
+      {tournament && (
+        <fieldset className="border rounded-lg p-4">
           <legend className="text-sm font-medium px-2">
             勝点設定（リーグ形式のみ）
           </legend>

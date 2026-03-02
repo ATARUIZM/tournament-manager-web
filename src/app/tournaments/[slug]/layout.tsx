@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { verifyAccessToken } from "@/lib/viewAccess";
 
 export default async function TournamentPublicLayout({
   children,
@@ -12,10 +14,32 @@ export default async function TournamentPublicLayout({
   const { slug } = await params;
   const tournament = await prisma.tournament.findUnique({
     where: { slug },
-    select: { name: true, slug: true, format: true },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      format: true,
+      isPublic: true,
+      viewPassword: true,
+    },
   });
 
   if (!tournament) notFound();
+
+  // 非公開の場合は404
+  if (!tournament.isPublic) notFound();
+
+  // 閲覧パスワードが設定されている場合はCookieを確認
+  if (tournament.viewPassword) {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(`tv_${tournament.id}`)?.value;
+    const valid = token
+      ? verifyAccessToken(tournament.id, tournament.viewPassword, token)
+      : false;
+    if (!valid) {
+      redirect(`/tournaments/${slug}/access`);
+    }
+  }
 
   const navItems = [
     { href: `/tournaments/${slug}`, label: "トップ" },

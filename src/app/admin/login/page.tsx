@@ -1,14 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { Suspense } from "react";
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const registered = searchParams.get("registered");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,6 +38,11 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md bg-white rounded-lg shadow p-8">
         <h1 className="text-2xl font-bold text-center mb-6">管理者ログイン</h1>
+        {registered && (
+          <div className="bg-green-50 text-green-700 p-3 rounded mb-4 text-sm">
+            アカウントを作成しました。ログインしてください。
+          </div>
+        )}
         {error && (
           <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">
             {error}
@@ -72,7 +81,21 @@ export default function LoginPage() {
             {loading ? "ログイン中..." : "ログイン"}
           </button>
         </form>
+        <p className="text-center text-sm text-gray-500 mt-6">
+          アカウントをお持ちでない方は{" "}
+          <Link href="/admin/register" className="text-blue-600 hover:underline">
+            新規登録
+          </Link>
+        </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

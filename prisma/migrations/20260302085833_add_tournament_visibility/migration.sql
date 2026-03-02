@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "tournaments" ADD COLUMN     "is_public" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN     "view_password" TEXT;

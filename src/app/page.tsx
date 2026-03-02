@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const tournaments = await prisma.tournament.findMany({
+    where: { isPublic: true },
     orderBy: { createdAt: "desc" },
     take: 20,
   });
