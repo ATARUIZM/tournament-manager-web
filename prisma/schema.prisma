@@ -1,0 +1,209 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// 管理者ユーザー
+// ============================================
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // bcrypt hashed
+  name      String
+  role      Role     @default(ADMIN)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  permissions Permission[]
+
+  @@map("users")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+}
+
+// ============================================
+// 大会
+// ============================================
+model Tournament {
+  id          String          @id @default(cuid())
+  name        String
+  slug        String          @unique
+  description String?
+  format      TournamentFormat
+  startDate   DateTime?       @map("start_date")
+  endDate     DateTime?       @map("end_date")
+  // リーグ設定
+  winPoints   Int             @default(3) @map("win_points")
+  drawPoints  Int             @default(1) @map("draw_points")
+  losePoints  Int             @default(0) @map("lose_points")
+  // トーナメント設定
+  thirdPlaceMatch Boolean     @default(false) @map("third_place_match")
+  // 将来のマルチテナント対応
+  ownerOrgId  String?         @map("owner_org_id")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  permissions   Permission[]
+  entries       Entry[]
+  matches       Match[]
+  bracketNodes  BracketNode[]
+  announcements Announcement[]
+
+  @@map("tournaments")
+}
+
+enum TournamentFormat {
+  LEAGUE
+  TOURNAMENT
+}
+
+// ============================================
+// 権限（user × tournament）
+// ============================================
+model Permission {
+  id           String     @id @default(cuid())
+  userId       String     @map("user_id")
+  tournamentId String     @map("tournament_id")
+  role         PermissionRole @default(EDITOR)
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tournamentId])
+  @@map("permissions")
+}
+
+enum PermissionRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+// ============================================
+// チーム
+// ============================================
+model Team {
+  id           String   @id @default(cuid())
+  name         String
+  representative String? // 代表者名
+  contact      String?  // 連絡先
+  memo         String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  entries      Entry[]
+  homeMatches   Match[]  @relation("HomeTeam")
+  awayMatches   Match[]  @relation("AwayTeam")
+  wonMatches    Match[]  @relation("Winner")
+  bracketSeeds  BracketNode[]
+
+  @@map("teams")
+}
+
+// ============================================
+// エントリー（大会 × チーム）
+// ============================================
+model Entry {
+  id           String     @id @default(cuid())
+  tournamentId String     @map("tournament_id")
+  teamId       String     @map("team_id")
+  sortOrder    Int        @default(0) @map("sort_order") // 並び順
+  isBye        Boolean    @default(false) @map("is_bye")  // シード（不戦勝）
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  team       Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, teamId])
+  @@map("entries")
+}
+
+// ============================================
+// 試合
+// ============================================
+model Match {
+  id           String      @id @default(cuid())
+  tournamentId String      @map("tournament_id")
+  homeTeamId   String?     @map("home_team_id")
+  awayTeamId   String?     @map("away_team_id")
+  matchDate    DateTime?   @map("match_date")
+  startTime    String?     @map("start_time")   // "14:00" 形式
+  venue        String?
+  gatherTime   String?     @map("gather_time")  // 集合時間 "13:00"
+  status       MatchStatus @default(SCHEDULED)
+  homeScore    Int?        @map("home_score")
+  awayScore    Int?        @map("away_score")
+  winnerId     String?     @map("winner_id")
+  memo         String?
+  roundNumber  Int?        @map("round_number") // リーグの節 or トーナメントのラウンド
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  homeTeam   Team?      @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam   Team?      @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  winner     Team?      @relation("Winner", fields: [winnerId], references: [id])
+
+  bracketNode BracketNode?
+
+  @@map("matches")
+}
+
+enum MatchStatus {
+  SCHEDULED
+  FINISHED
+  CANCELED
+}
+
+// ============================================
+// トーナメント表ノード
+// ============================================
+model BracketNode {
+  id           String  @id @default(cuid())
+  tournamentId String  @map("tournament_id")
+  matchId      String? @unique @map("match_id")
+  round        Int     // 1=1回戦, 2=2回戦, ...
+  position     Int     // そのラウンド内の位置（0始まり）
+  isBye        Boolean @default(false) @map("is_bye")
+  // BYEで自動進出するチーム
+  seedTeamId   String? @map("seed_team_id")
+  // 親ノード（勝者が進む先）
+  nextNodeId   String? @map("next_node_id")
+  // 3位決定戦用
+  isThirdPlace Boolean @default(false) @map("is_third_place")
+
+  tournament Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  match      Match?      @relation(fields: [matchId], references: [id])
+  seedTeam   Team?       @relation(fields: [seedTeamId], references: [id])
+  nextNode   BracketNode? @relation("BracketProgression", fields: [nextNodeId], references: [id])
+  prevNodes  BracketNode[] @relation("BracketProgression")
+
+  @@map("bracket_nodes")
+}
+
+// ============================================
+// お知らせ
+// ============================================
+model Announcement {
+  id           String   @id @default(cuid())
+  tournamentId String   @map("tournament_id")
+  title        String
+  content      String
+  pinned       Boolean  @default(false)
+  published    Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@map("announcements")
+}
