@@ -189,22 +189,51 @@ export async function generateBracket(tournamentId: string) {
   const n = entries.length;
   if (n < 2) throw new Error("チームが2つ以上必要です");
 
-  // チーム数が2の累乗でない場合はエラー
-  if ((n & (n - 1)) !== 0) {
-    const lower = Math.pow(2, Math.floor(Math.log2(n)));
-    const upper = lower * 2;
-    throw new Error(
-      `チーム数は2の累乗（4・8・16・32…）である必要があります（現在${n}チーム）。${lower}チームまたは${upper}チームにしてください`
-    );
-  }
-
   // 既存のブラケットと試合を削除
   await prisma.bracketNode.deleteMany({ where: { tournamentId } });
   await prisma.match.deleteMany({ where: { tournamentId } });
 
-  // 登録順にスロットを構築（BYEなし）
-  const bracketSize = n;
-  const slots: (string | null)[] = entries.map((e) => e.teamId);
+  // bracketSize = n 以上の最小2の累乗
+  const bracketSize = Math.pow(2, Math.ceil(Math.log2(Math.max(n, 2))));
+  const totalByes = bracketSize - n;
+
+  // BYE割り当て:
+  //   1. entry.isBye=true のチームを優先
+  //   2. 残りのBYE枠は上位シード（sortOrder順）から自動割り当て
+  //   3. null vs null スロットは絶対に作らない
+  const manualByes = entries.filter((e) => e.isBye);
+  const nonByes = entries.filter((e) => !e.isBye);
+
+  let byeTeamIds: string[];
+  let playTeamIds: string[];
+
+  if (totalByes >= manualByes.length) {
+    const extraByes = totalByes - manualByes.length;
+    byeTeamIds = [
+      ...manualByes.map((e) => e.teamId),
+      ...nonByes.slice(0, extraByes).map((e) => e.teamId),
+    ];
+    playTeamIds = nonByes.slice(extraByes).map((e) => e.teamId);
+  } else {
+    // manual BYE 指定が必要数を超える場合は上位から totalByes 個だけ BYE にする
+    byeTeamIds = manualByes.slice(0, totalByes).map((e) => e.teamId);
+    playTeamIds = [
+      ...manualByes.slice(totalByes).map((e) => e.teamId),
+      ...nonByes.map((e) => e.teamId),
+    ];
+  }
+
+  // スロット構築: BYEチームはnullとペア（1回戦免除）、残りは順番に対戦
+  const slots: (string | null)[] = [];
+  for (const teamId of byeTeamIds) {
+    slots.push(teamId);
+    slots.push(null);
+  }
+  for (const teamId of playTeamIds) {
+    slots.push(teamId);
+  }
+  // slots.length === bracketSize が保証される
+
   const totalRounds = Math.log2(bracketSize);
 
   // ブラケットノードを全ラウンド分作成

@@ -18,6 +18,7 @@ export default async function BracketPage({
           match: {
             include: { homeTeam: true, awayTeam: true, winner: true },
           },
+          seedTeam: true,
         },
         orderBy: [{ round: "asc" }, { position: "asc" }],
       },
@@ -65,12 +66,15 @@ export default async function BracketPage({
           label: roundLabels(round, maxRound),
           matches: roundNodes.map((n) => ({
             id: n.id,
-            homeTeam: n.match?.homeTeam?.name || "",
-            awayTeam: n.match?.awayTeam?.name || "",
+            homeTeam: n.isBye
+              ? (n.seedTeam?.name || "")
+              : (n.match?.homeTeam?.name || ""),
+            awayTeam: n.isBye ? "" : (n.match?.awayTeam?.name || ""),
             homeScore: n.match?.homeScore ?? null,
             awayScore: n.match?.awayScore ?? null,
             winner: n.match?.winner?.name || null,
-            status: n.match?.status || "SCHEDULED",
+            status: n.match?.status || (n.isBye ? "FINISHED" : "SCHEDULED"),
+            isBye: n.isBye,
           })),
         }))}
         thirdPlace={

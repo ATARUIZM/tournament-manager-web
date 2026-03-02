@@ -8,6 +8,7 @@ type BracketMatch = {
   awayScore: number | null;
   winner: string | null;
   status: string;
+  isBye: boolean;
 };
 
 type BracketRound = {
@@ -47,39 +48,51 @@ export function BracketView({
                 gap: `${Math.pow(2, round.round) * 12}px`,
               }}
             >
-              {round.matches.map((match) => (
-                <div
-                  key={match.id}
-                  className="bg-white rounded shadow border w-48"
-                >
+              {round.matches.map((match) =>
+                match.isBye ? (
                   <div
-                    className={`px-3 py-1.5 border-b flex justify-between text-sm ${
-                      match.status === "FINISHED" &&
-                      match.winner === match.homeTeam
-                        ? "font-bold bg-blue-50"
-                        : ""
-                    }`}
+                    key={match.id}
+                    className="bg-white rounded shadow border w-48 opacity-60"
                   >
-                    <span className="truncate">{match.homeTeam}</span>
-                    {match.homeScore !== null && (
-                      <span className="ml-2 font-mono">{match.homeScore}</span>
-                    )}
+                    <div className="px-3 py-1.5 border-b text-sm font-medium truncate">
+                      {match.homeTeam}
+                    </div>
+                    <div className="px-3 py-1.5 text-sm text-gray-300">—</div>
                   </div>
+                ) : (
                   <div
-                    className={`px-3 py-1.5 flex justify-between text-sm ${
-                      match.status === "FINISHED" &&
-                      match.winner === match.awayTeam
-                        ? "font-bold bg-blue-50"
-                        : ""
-                    }`}
+                    key={match.id}
+                    className="bg-white rounded shadow border w-48"
                   >
-                    <span className="truncate">{match.awayTeam}</span>
-                    {match.awayScore !== null && (
-                      <span className="ml-2 font-mono">{match.awayScore}</span>
-                    )}
+                    <div
+                      className={`px-3 py-1.5 border-b flex justify-between text-sm ${
+                        match.status === "FINISHED" &&
+                        match.winner === match.homeTeam
+                          ? "font-bold bg-blue-50"
+                          : ""
+                      }`}
+                    >
+                      <span className="truncate">{match.homeTeam}</span>
+                      {match.homeScore !== null && (
+                        <span className="ml-2 font-mono">{match.homeScore}</span>
+                      )}
+                    </div>
+                    <div
+                      className={`px-3 py-1.5 flex justify-between text-sm ${
+                        match.status === "FINISHED" &&
+                        match.winner === match.awayTeam
+                          ? "font-bold bg-blue-50"
+                          : ""
+                      }`}
+                    >
+                      <span className="truncate">{match.awayTeam}</span>
+                      {match.awayScore !== null && (
+                        <span className="ml-2 font-mono">{match.awayScore}</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              )}
             </div>
           </div>
         ))}
