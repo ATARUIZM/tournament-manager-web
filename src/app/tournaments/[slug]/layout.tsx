@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import { verifyAccessToken } from "@/lib/viewAccess";
+import { TournamentPasswordForm } from "@/components/TournamentPasswordForm";
 
 export default async function TournamentPublicLayout({
   children,
@@ -37,7 +38,7 @@ export default async function TournamentPublicLayout({
       ? verifyAccessToken(tournament.id, tournament.viewPassword, token)
       : false;
     if (!valid) {
-      redirect(`/tournaments/${slug}/access`);
+      return <TournamentPasswordForm slug={slug} />;
     }
   }
 

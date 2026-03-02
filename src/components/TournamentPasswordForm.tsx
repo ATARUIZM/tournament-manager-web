@@ -1,14 +1,9 @@
 "use client";
 
 import { verifyViewPassword } from "@/lib/actions/viewAccess";
-import { useState, use } from "react";
+import { useState } from "react";
 
-export default function AccessPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = use(params);
+export function TournamentPasswordForm({ slug }: { slug: string }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
