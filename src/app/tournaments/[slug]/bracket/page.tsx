@@ -43,10 +43,7 @@ export default async function BracketPage({
   const maxRound = Math.max(...nodes.map((n) => n.round));
 
   // ラウンドごとにグルーピング
-  const rounds: Map<
-    number,
-    typeof tournament.bracketNodes
-  > = new Map();
+  const rounds: Map<number, typeof tournament.bracketNodes> = new Map();
   for (const node of nodes) {
     const list = rounds.get(node.round) || [];
     list.push(node);
@@ -60,35 +57,45 @@ export default async function BracketPage({
     return `${round}回戦`;
   };
 
+  const toMatchData = (n: (typeof tournament.bracketNodes)[number]) => ({
+    id: n.id,
+    homeTeam: n.isBye
+      ? (n.seedTeam?.name || "")
+      : (n.match?.homeTeam?.name || ""),
+    awayTeam: n.isBye ? "" : (n.match?.awayTeam?.name || ""),
+    homeScore: n.match?.homeScore ?? null,
+    awayScore: n.match?.awayScore ?? null,
+    winner: n.match?.winner?.name || null,
+    status: n.match?.status || (n.isBye ? "FINISHED" : "SCHEDULED"),
+    isBye: n.isBye,
+  });
+
+  // Round 1 にBYEがある場合：実試合のみ「予選」として分離し、Round 2以降をメイン表示
+  const round1Nodes = rounds.get(1) ?? [];
+  const hasFirstRoundByes = round1Nodes.some((n) => n.isBye);
+
+  const preliminary = hasFirstRoundByes
+    ? round1Nodes.filter((n) => !n.isBye).map(toMatchData)
+    : undefined;
+
+  const mainRoundEntries = Array.from(rounds.entries()).filter(
+    ([r]) => !hasFirstRoundByes || r >= 2
+  );
+
   return (
     <div>
       <h2 className="text-lg font-bold mb-4">トーナメント表</h2>
       <BracketView
-        rounds={Array.from(rounds.entries()).map(([round, roundNodes]) => ({
+        rounds={mainRoundEntries.map(([round, roundNodes]) => ({
           round,
           label: roundLabels(round, maxRound),
-          matches: roundNodes.map((n) => ({
-            id: n.id,
-            homeTeam: n.isBye
-              ? (n.seedTeam?.name || "")
-              : (n.match?.homeTeam?.name || ""),
-            awayTeam: n.isBye
-              ? ""
-              : (n.match?.awayTeam?.name || ""),
-            homeScore: n.match?.homeScore ?? null,
-            awayScore: n.match?.awayScore ?? null,
-            winner: n.match?.winner?.name || null,
-            status: n.match?.status || (n.isBye ? "FINISHED" : "SCHEDULED"),
-            isBye: n.isBye,
-          })),
+          matches: roundNodes.map(toMatchData),
         }))}
         thirdPlace={
           thirdPlaceNode?.match
             ? {
-                homeTeam:
-                  thirdPlaceNode.match.homeTeam?.name || "",
-                awayTeam:
-                  thirdPlaceNode.match.awayTeam?.name || "",
+                homeTeam: thirdPlaceNode.match.homeTeam?.name || "",
+                awayTeam: thirdPlaceNode.match.awayTeam?.name || "",
                 homeScore: thirdPlaceNode.match.homeScore,
                 awayScore: thirdPlaceNode.match.awayScore,
                 winner: thirdPlaceNode.match.winner?.name || null,
@@ -96,6 +103,7 @@ export default async function BracketPage({
               }
             : null
         }
+        preliminary={preliminary}
       />
     </div>
   );
