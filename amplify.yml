@@ -7,6 +7,8 @@ frontend:
         - npx prisma generate
     build:
       commands:
+        - echo "DATABASE_URL=$DATABASE_URL" >> .env.production
+        - echo "JWT_SECRET=$JWT_SECRET" >> .env.production
         - npx prisma migrate deploy
         - npm run build
   artifacts:
