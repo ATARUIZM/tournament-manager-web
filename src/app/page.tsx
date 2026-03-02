@@ -4,17 +4,10 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const hasEnvVar = !!process.env.DATABASE_URL;
-  let tournaments: Awaited<ReturnType<typeof prisma.tournament.findMany>> = [];
-  let dbError: string | null = null;
-  try {
-    tournaments = await prisma.tournament.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    });
-  } catch (e) {
-    dbError = String(e);
-  }
+  const tournaments = await prisma.tournament.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
 
   return (
     <div className="min-h-screen">
@@ -25,12 +18,6 @@ export default async function HomePage() {
         </div>
       </header>
       <main className="max-w-4xl mx-auto px-4 py-8">
-        <pre className="bg-gray-100 text-gray-800 p-2 rounded text-xs mb-4">
-          DATABASE_URL in page: {String(hasEnvVar)}
-        </pre>
-        {dbError && (
-          <pre className="bg-red-100 text-red-800 p-4 rounded text-xs overflow-auto mb-4">{dbError}</pre>
-        )}
         <h2 className="text-xl font-bold mb-4">開催中の大会</h2>
         {tournaments.length === 0 ? (
           <p className="text-gray-500">まだ大会がありません。</p>
