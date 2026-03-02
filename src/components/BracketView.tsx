@@ -57,9 +57,7 @@ export function BracketView({
                     <div className="px-3 py-1.5 border-b flex justify-between text-sm font-bold">
                       <span className="truncate">{match.homeTeam}</span>
                     </div>
-                    <div className="px-3 py-1.5 flex justify-between text-sm text-gray-400 italic">
-                      <span>BYE</span>
-                    </div>
+                    <div className="px-3 py-1.5 text-sm text-gray-300">—</div>
                   </div>
                 ) : (
                   <div

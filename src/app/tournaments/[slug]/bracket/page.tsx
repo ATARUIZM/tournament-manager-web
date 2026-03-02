@@ -70,11 +70,11 @@ export default async function BracketPage({
           matches: roundNodes.map((n) => ({
             id: n.id,
             homeTeam: n.isBye
-              ? (n.seedTeam?.name || "BYE")
-              : (n.match?.homeTeam?.name || "TBD"),
+              ? (n.seedTeam?.name || "")
+              : (n.match?.homeTeam?.name || ""),
             awayTeam: n.isBye
-              ? "BYE"
-              : (n.match?.awayTeam?.name || "TBD"),
+              ? ""
+              : (n.match?.awayTeam?.name || ""),
             homeScore: n.match?.homeScore ?? null,
             awayScore: n.match?.awayScore ?? null,
             winner: n.match?.winner?.name || null,
@@ -86,9 +86,9 @@ export default async function BracketPage({
           thirdPlaceNode?.match
             ? {
                 homeTeam:
-                  thirdPlaceNode.match.homeTeam?.name || "TBD",
+                  thirdPlaceNode.match.homeTeam?.name || "",
                 awayTeam:
-                  thirdPlaceNode.match.awayTeam?.name || "TBD",
+                  thirdPlaceNode.match.awayTeam?.name || "",
                 homeScore: thirdPlaceNode.match.homeScore,
                 awayScore: thirdPlaceNode.match.awayScore,
                 winner: thirdPlaceNode.match.winner?.name || null,

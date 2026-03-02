@@ -103,7 +103,7 @@ export function MatchRow({
         <div className="grid grid-cols-3 gap-3">
           <div>
             <label className="block text-xs text-gray-500 mb-1">
-              ホームスコア
+              {match.homeTeam?.name || "ホーム"}
             </label>
             <input
               type="number"
@@ -115,7 +115,7 @@ export function MatchRow({
           </div>
           <div>
             <label className="block text-xs text-gray-500 mb-1">
-              アウェイスコア
+              {match.awayTeam?.name || "アウェイ"}
             </label>
             <input
               type="number"
