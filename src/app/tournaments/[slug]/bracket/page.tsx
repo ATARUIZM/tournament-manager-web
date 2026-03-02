@@ -18,7 +18,6 @@ export default async function BracketPage({
           match: {
             include: { homeTeam: true, awayTeam: true, winner: true },
           },
-          seedTeam: true,
         },
         orderBy: [{ round: "asc" }, { position: "asc" }],
       },
@@ -57,39 +56,22 @@ export default async function BracketPage({
     return `${round}回戦`;
   };
 
-  const toMatchData = (n: (typeof tournament.bracketNodes)[number]) => ({
-    id: n.id,
-    homeTeam: n.isBye
-      ? (n.seedTeam?.name || "")
-      : (n.match?.homeTeam?.name || ""),
-    awayTeam: n.isBye ? "" : (n.match?.awayTeam?.name || ""),
-    homeScore: n.match?.homeScore ?? null,
-    awayScore: n.match?.awayScore ?? null,
-    winner: n.match?.winner?.name || null,
-    status: n.match?.status || (n.isBye ? "FINISHED" : "SCHEDULED"),
-    isBye: n.isBye,
-  });
-
-  // Round 1 にBYEがある場合：実試合のみ「予選」として分離し、Round 2以降をメイン表示
-  const round1Nodes = rounds.get(1) ?? [];
-  const hasFirstRoundByes = round1Nodes.some((n) => n.isBye);
-
-  const preliminary = hasFirstRoundByes
-    ? round1Nodes.filter((n) => !n.isBye).map(toMatchData)
-    : undefined;
-
-  const mainRoundEntries = Array.from(rounds.entries()).filter(
-    ([r]) => !hasFirstRoundByes || r >= 2
-  );
-
   return (
     <div>
       <h2 className="text-lg font-bold mb-4">トーナメント表</h2>
       <BracketView
-        rounds={mainRoundEntries.map(([round, roundNodes]) => ({
+        rounds={Array.from(rounds.entries()).map(([round, roundNodes]) => ({
           round,
           label: roundLabels(round, maxRound),
-          matches: roundNodes.map(toMatchData),
+          matches: roundNodes.map((n) => ({
+            id: n.id,
+            homeTeam: n.match?.homeTeam?.name || "",
+            awayTeam: n.match?.awayTeam?.name || "",
+            homeScore: n.match?.homeScore ?? null,
+            awayScore: n.match?.awayScore ?? null,
+            winner: n.match?.winner?.name || null,
+            status: n.match?.status || "SCHEDULED",
+          })),
         }))}
         thirdPlace={
           thirdPlaceNode?.match
@@ -103,7 +85,6 @@ export default async function BracketPage({
               }
             : null
         }
-        preliminary={preliminary}
       />
     </div>
   );

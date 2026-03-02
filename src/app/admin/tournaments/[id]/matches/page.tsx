@@ -8,6 +8,7 @@ import {
 import { MatchRow } from "@/components/MatchRow";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { MatchCreateForm } from "@/components/MatchCreateForm";
+import { GenerateBracketButton } from "@/components/GenerateBracketButton";
 
 export const dynamic = "force-dynamic";
 
@@ -65,23 +66,10 @@ export default async function AdminMatchesPage({
               )}
             </form>
           ) : (
-            <form action={generateBracketAction}>
-              {tournament.matches.length > 0 ? (
-                <ConfirmButton
-                  message="既存の試合を削除して再生成しますか？"
-                  className="bg-green-600 text-white px-3 py-1.5 rounded text-sm hover:bg-green-700 transition"
-                >
-                  トーナメント表生成
-                </ConfirmButton>
-              ) : (
-                <button
-                  type="submit"
-                  className="bg-green-600 text-white px-3 py-1.5 rounded text-sm hover:bg-green-700 transition"
-                >
-                  トーナメント表生成
-                </button>
-              )}
-            </form>
+            <GenerateBracketButton
+              action={generateBracketAction}
+              hasExisting={tournament.matches.length > 0}
+            />
           )}
         </div>
       </div>

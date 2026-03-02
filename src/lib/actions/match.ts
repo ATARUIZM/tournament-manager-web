@@ -186,35 +186,25 @@ export async function generateBracket(tournamentId: string) {
     orderBy: { sortOrder: "asc" },
   });
 
-  if (entries.length < 2) throw new Error("チームが2つ以上必要です");
+  const n = entries.length;
+  if (n < 2) throw new Error("チームが2つ以上必要です");
+
+  // チーム数が2の累乗でない場合はエラー
+  if ((n & (n - 1)) !== 0) {
+    const lower = Math.pow(2, Math.floor(Math.log2(n)));
+    const upper = lower * 2;
+    throw new Error(
+      `チーム数は2の累乗（4・8・16・32…）である必要があります（現在${n}チーム）。${lower}チームまたは${upper}チームにしてください`
+    );
+  }
 
   // 既存のブラケットと試合を削除
   await prisma.bracketNode.deleteMany({ where: { tournamentId } });
   await prisma.match.deleteMany({ where: { tournamentId } });
 
-  // チーム数に最適なスロットを構築
-  // ・bracketSize = チーム数以上の最小の2の累乗
-  // ・firstRoundMatchCount = チーム数 - bracketSize/2（1回戦で実際に試合が必要な組数）
-  // ・byeCount = bracketSize/2 - firstRoundMatchCount（1回戦BYEのチーム数）
-  // → 上位チーム(1〜byeCount)はBYE、下位チームが1回戦で対戦。null vs null スロットは作らない。
-  const n = entries.length;
-  const bracketSize = Math.pow(2, Math.ceil(Math.log2(Math.max(n, 2))));
-  const secondRoundTeams = bracketSize / 2;
-  const firstRoundMatchCount = n - secondRoundTeams;
-  const byeCount = secondRoundTeams - firstRoundMatchCount;
-  const teamIds = entries.map((e) => e.teamId);
-
-  const slots: (string | null)[] = [];
-  // 上位 byeCount チームは null とペア（1回戦BYE）
-  for (let i = 0; i < byeCount; i++) {
-    slots.push(teamIds[i]);
-    slots.push(null);
-  }
-  // 残りのチームは順番に並べて1回戦で対戦
-  for (let i = byeCount; i < n; i++) {
-    slots.push(teamIds[i]);
-  }
-
+  // 登録順にスロットを構築（BYEなし）
+  const bracketSize = n;
+  const slots: (string | null)[] = entries.map((e) => e.teamId);
   const totalRounds = Math.log2(bracketSize);
 
   // ブラケットノードを全ラウンド分作成
