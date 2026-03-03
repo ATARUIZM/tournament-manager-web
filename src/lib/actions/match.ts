@@ -189,10 +189,6 @@ export async function generateBracket(tournamentId: string) {
   const n = entries.length;
   if (n < 2) throw new Error("チームが2つ以上必要です");
 
-  // 既存のブラケットと試合を削除
-  await prisma.bracketNode.deleteMany({ where: { tournamentId } });
-  await prisma.match.deleteMany({ where: { tournamentId } });
-
   // bracketSize = n 以上の最小2の累乗
   const bracketSize = Math.pow(2, Math.ceil(Math.log2(Math.max(n, 2))));
   const totalByes = bracketSize - n;
@@ -200,7 +196,6 @@ export async function generateBracket(tournamentId: string) {
   // BYE割り当て:
   //   1. entry.isBye=true のチームを優先
   //   2. 残りのBYE枠は上位シード（sortOrder順）から自動割り当て
-  //   3. null vs null スロットは絶対に作らない
   const manualByes = entries.filter((e) => e.isBye);
   const nonByes = entries.filter((e) => !e.isBye);
 
@@ -215,7 +210,6 @@ export async function generateBracket(tournamentId: string) {
     ];
     playTeamIds = nonByes.slice(extraByes).map((e) => e.teamId);
   } else {
-    // manual BYE 指定が必要数を超える場合は上位から totalByes 個だけ BYE にする
     byeTeamIds = manualByes.slice(0, totalByes).map((e) => e.teamId);
     playTeamIds = [
       ...manualByes.slice(totalByes).map((e) => e.teamId),
@@ -223,128 +217,152 @@ export async function generateBracket(tournamentId: string) {
     ];
   }
 
-  // スロット構築: BYEチームはnullとペア（1回戦免除）、残りは順番に対戦
-  const slots: (string | null)[] = [];
-  for (const teamId of byeTeamIds) {
-    slots.push(teamId);
-    slots.push(null);
-  }
-  for (const teamId of playTeamIds) {
-    slots.push(teamId);
-  }
-  // slots.length === bracketSize が保証される
-
   const totalRounds = Math.log2(bracketSize);
+  const matchesInRound1 = bracketSize / 2; // = totalByes + playTeamIds.length / 2
 
-  // ブラケットノードを全ラウンド分作成
+  // 既存のブラケットを削除（自己参照FKを先にクリアしてからdelete）
+  await prisma.bracketNode.updateMany({
+    where: { tournamentId },
+    data: { nextNodeId: null },
+  });
+  await prisma.bracketNode.deleteMany({ where: { tournamentId } });
+  await prisma.match.deleteMany({ where: { tournamentId } });
+
+  // ブラケット全体をトランザクションで一括生成
   const nodesByRound: Map<number, string[]> = new Map();
 
-  // 1回戦から作成
-  for (let round = 1; round <= totalRounds; round++) {
-    const matchesInRound = bracketSize / Math.pow(2, round);
-    const nodeIds: string[] = [];
+  await prisma.$transaction(
+    async (tx) => {
+      // ── 1回戦ノードを生成 ──────────────────────────────
+      const round1Ids: string[] = [];
 
-    for (let pos = 0; pos < matchesInRound; pos++) {
-      let homeTeamId: string | null = null;
-      let awayTeamId: string | null = null;
-      let isBye = false;
+      for (let pos = 0; pos < matchesInRound1; pos++) {
+        if (pos < totalByes) {
+          // BYEノード（試合なし）
+          const node = await tx.bracketNode.create({
+            data: {
+              tournamentId,
+              matchId: null,
+              round: 1,
+              position: pos,
+              isBye: true,
+              seedTeamId: byeTeamIds[pos],
+            },
+          });
+          round1Ids.push(node.id);
+        } else {
+          // 通常の試合
+          const playIdx = (pos - totalByes) * 2;
+          const match = await tx.match.create({
+            data: {
+              tournamentId,
+              homeTeamId: playTeamIds[playIdx],
+              awayTeamId: playTeamIds[playIdx + 1],
+              roundNumber: 1,
+              status: "SCHEDULED",
+            },
+          });
+          const node = await tx.bracketNode.create({
+            data: {
+              tournamentId,
+              matchId: match.id,
+              round: 1,
+              position: pos,
+              isBye: false,
+            },
+          });
+          round1Ids.push(node.id);
+        }
+      }
+      nodesByRound.set(1, round1Ids);
 
-      if (round === 1) {
-        const idx1 = pos * 2;
-        const idx2 = pos * 2 + 1;
-        homeTeamId = slots[idx1];
-        awayTeamId = slots[idx2];
-        isBye = homeTeamId === null || awayTeamId === null;
+      // ── 2回戦以降のノードを生成（チームは未定・空枠） ──
+      for (let round = 2; round <= totalRounds; round++) {
+        const matchesInRound = bracketSize / Math.pow(2, round);
+        const roundIds: string[] = [];
+
+        for (let pos = 0; pos < matchesInRound; pos++) {
+          const match = await tx.match.create({
+            data: {
+              tournamentId,
+              roundNumber: round,
+              status: "SCHEDULED",
+            },
+          });
+          const node = await tx.bracketNode.create({
+            data: {
+              tournamentId,
+              matchId: match.id,
+              round,
+              position: pos,
+              isBye: false,
+            },
+          });
+          roundIds.push(node.id);
+        }
+        nodesByRound.set(round, roundIds);
       }
 
-      if (isBye) {
-        // BYEの場合: Matchを作らず、BracketNodeのみ作成
-        const seedTeamId = homeTeamId || awayTeamId;
-        const node = await prisma.bracketNode.create({
-          data: {
-            tournamentId,
-            matchId: null,
-            round,
-            position: pos,
-            isBye: true,
-            seedTeamId,
-          },
-        });
-        nodeIds.push(node.id);
-      } else {
-        // 通常の試合
-        const match = await prisma.match.create({
-          data: {
-            tournamentId,
-            homeTeamId,
-            awayTeamId,
-            roundNumber: round,
-            status: "SCHEDULED",
-          },
-        });
+      // ── nextNodeId を設定（勝者が進む先） ──────────────
+      for (let round = 1; round < totalRounds; round++) {
+        const currentNodes = nodesByRound.get(round)!;
+        const nextNodes = nodesByRound.get(round + 1)!;
 
-        const node = await prisma.bracketNode.create({
-          data: {
-            tournamentId,
-            matchId: match.id,
-            round,
-            position: pos,
-            isBye: false,
-          },
-        });
-        nodeIds.push(node.id);
+        for (let i = 0; i < currentNodes.length; i++) {
+          await tx.bracketNode.update({
+            where: { id: currentNodes[i] },
+            data: { nextNodeId: nextNodes[Math.floor(i / 2)] },
+          });
+        }
       }
-    }
 
-    nodesByRound.set(round, nodeIds);
-  }
+      // ── BYEチームを次ラウンドに自動配置 ────────────────
+      const round2Ids = nodesByRound.get(2);
+      if (round2Ids) {
+        for (let pos = 0; pos < totalByes; pos++) {
+          const seedTeamId = byeTeamIds[pos];
+          const nextNodeId = round2Ids[Math.floor(pos / 2)];
+          const nextNode = await tx.bracketNode.findUnique({
+            where: { id: nextNodeId },
+            include: { match: true },
+          });
+          if (!nextNode?.match) continue;
 
-  // nextNodeId を設定（各ノードの勝者が進む先）
-  for (let round = 1; round < totalRounds; round++) {
-    const currentNodes = nodesByRound.get(round)!;
-    const nextNodes = nodesByRound.get(round + 1)!;
-
-    for (let i = 0; i < currentNodes.length; i++) {
-      const nextNodeIdx = Math.floor(i / 2);
-      await prisma.bracketNode.update({
-        where: { id: currentNodes[i] },
-        data: { nextNodeId: nextNodes[nextNodeIdx] },
-      });
-    }
-  }
-
-  // BYEの勝者を次ラウンドに自動反映
-  for (let round = 1; round < totalRounds; round++) {
-    const currentNodes = nodesByRound.get(round)!;
-    for (const nodeId of currentNodes) {
-      const node = await prisma.bracketNode.findUnique({
-        where: { id: nodeId },
-      });
-      if (node?.isBye && node.seedTeamId && node.nextNodeId) {
-        await advanceBracketWinnerByNode(node.id, node.seedTeamId);
+          if (pos % 2 === 0) {
+            await tx.match.update({
+              where: { id: nextNode.match.id },
+              data: { homeTeamId: seedTeamId },
+            });
+          } else {
+            await tx.match.update({
+              where: { id: nextNode.match.id },
+              data: { awayTeamId: seedTeamId },
+            });
+          }
+        }
       }
-    }
-  }
 
-  // 3位決定戦
-  if (tournament?.thirdPlaceMatch && totalRounds >= 2) {
-    const thirdPlaceMatch = await prisma.match.create({
-      data: {
-        tournamentId,
-        roundNumber: Math.ceil(totalRounds),
-      },
-    });
-
-    await prisma.bracketNode.create({
-      data: {
-        tournamentId,
-        matchId: thirdPlaceMatch.id,
-        round: Math.ceil(totalRounds),
-        position: 1, // 決勝の隣
-        isThirdPlace: true,
-      },
-    });
-  }
+      // ── 3位決定戦 ────────────────────────────────────
+      if (tournament?.thirdPlaceMatch && totalRounds >= 2) {
+        const thirdPlaceMatch = await tx.match.create({
+          data: {
+            tournamentId,
+            roundNumber: Math.ceil(totalRounds),
+          },
+        });
+        await tx.bracketNode.create({
+          data: {
+            tournamentId,
+            matchId: thirdPlaceMatch.id,
+            round: Math.ceil(totalRounds),
+            position: 1,
+            isThirdPlace: true,
+          },
+        });
+      }
+    },
+    { timeout: 30000 }
+  );
 
   revalidatePath(`/admin/tournaments/${tournamentId}/matches`);
 }
@@ -374,26 +392,3 @@ async function advanceBracketWinner(matchId: string, winnerId: string) {
   }
 }
 
-async function advanceBracketWinnerByNode(nodeId: string, winnerId: string) {
-  const node = await prisma.bracketNode.findUnique({
-    where: { id: nodeId },
-    include: { nextNode: { include: { match: true } } },
-  });
-
-  if (!node?.nextNode?.match) return;
-
-  const nextMatch = node.nextNode.match;
-  const position = node.position;
-
-  if (position % 2 === 0) {
-    await prisma.match.update({
-      where: { id: nextMatch.id },
-      data: { homeTeamId: winnerId },
-    });
-  } else {
-    await prisma.match.update({
-      where: { id: nextMatch.id },
-      data: { awayTeamId: winnerId },
-    });
-  }
-}
