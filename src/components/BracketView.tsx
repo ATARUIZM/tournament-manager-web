@@ -1,5 +1,9 @@
 "use client";
 
+// 1回戦の各ノードに割り当てる高さ（px）
+// カード高さ ≈ 67px なので、それより大きい値にすることで隙間ができる
+const SLOT_H = 80;
+
 type BracketMatch = {
   id: string;
   homeTeam: string;
@@ -26,6 +30,48 @@ type ThirdPlace = {
   status: string;
 };
 
+function MatchCard({ match }: { match: BracketMatch }) {
+  if (match.isBye) {
+    return (
+      <div className="bg-white rounded shadow border w-full opacity-60">
+        <div className="px-3 py-1.5 border-b text-sm font-medium truncate">
+          {match.homeTeam}
+        </div>
+        <div className="px-3 py-1.5 text-sm text-gray-300">—</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded shadow border w-full">
+      <div
+        className={`px-3 py-1.5 border-b flex justify-between text-sm ${
+          match.status === "FINISHED" && match.winner === match.homeTeam
+            ? "font-bold bg-blue-50"
+            : ""
+        }`}
+      >
+        <span className="truncate">{match.homeTeam || "—"}</span>
+        {match.homeScore !== null && (
+          <span className="ml-2 font-mono">{match.homeScore}</span>
+        )}
+      </div>
+      <div
+        className={`px-3 py-1.5 flex justify-between text-sm ${
+          match.status === "FINISHED" && match.winner === match.awayTeam
+            ? "font-bold bg-blue-50"
+            : ""
+        }`}
+      >
+        <span className="truncate">{match.awayTeam || "—"}</span>
+        {match.awayScore !== null && (
+          <span className="ml-2 font-mono">{match.awayScore}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function BracketView({
   rounds,
   thirdPlace,
@@ -35,67 +81,30 @@ export function BracketView({
 }) {
   return (
     <div className="overflow-x-auto">
-      <div className="flex gap-6 min-w-max pb-4">
-        {rounds.map((round) => (
-          <div key={round.round} className="flex flex-col">
-            <h3 className="text-sm font-bold text-gray-500 mb-3 text-center">
-              {round.label}
-            </h3>
-            <div
-              className="flex flex-col flex-1"
-              style={{
-                paddingTop: `${(Math.pow(2, round.round - 1) - 1) * 24}px`,
-                gap: `${Math.pow(2, round.round) * 12}px`,
-              }}
-            >
-              {round.matches.map((match) =>
-                match.isBye ? (
-                  <div
-                    key={match.id}
-                    className="bg-white rounded shadow border w-48 opacity-60"
-                  >
-                    <div className="px-3 py-1.5 border-b text-sm font-medium truncate">
-                      {match.homeTeam}
-                    </div>
-                    <div className="px-3 py-1.5 text-sm text-gray-300">—</div>
-                  </div>
-                ) : (
-                  <div
-                    key={match.id}
-                    className="bg-white rounded shadow border w-48"
-                  >
-                    <div
-                      className={`px-3 py-1.5 border-b flex justify-between text-sm ${
-                        match.status === "FINISHED" &&
-                        match.winner === match.homeTeam
-                          ? "font-bold bg-blue-50"
-                          : ""
-                      }`}
-                    >
-                      <span className="truncate">{match.homeTeam}</span>
-                      {match.homeScore !== null && (
-                        <span className="ml-2 font-mono">{match.homeScore}</span>
-                      )}
-                    </div>
-                    <div
-                      className={`px-3 py-1.5 flex justify-between text-sm ${
-                        match.status === "FINISHED" &&
-                        match.winner === match.awayTeam
-                          ? "font-bold bg-blue-50"
-                          : ""
-                      }`}
-                    >
-                      <span className="truncate">{match.awayTeam}</span>
-                      {match.awayScore !== null && (
-                        <span className="ml-2 font-mono">{match.awayScore}</span>
-                      )}
-                    </div>
-                  </div>
-                )
-              )}
+      <div className="flex gap-6 min-w-max pb-4 items-start">
+        {rounds.map((round) => {
+          // ラウンドが上がるたびにスロット高さを2倍にする
+          // → 次ラウンドのカードが前ラウンドの2枚の中間に来る
+          const slotH = Math.pow(2, round.round - 1) * SLOT_H;
+
+          return (
+            <div key={round.round} className="flex flex-col w-48">
+              <h3 className="text-sm font-bold text-gray-500 mb-2 text-center">
+                {round.label}
+              </h3>
+              {round.matches.map((match) => (
+                // スロット：固定高さ + 中央揃えでカードを配置
+                <div
+                  key={match.id}
+                  className="flex items-center"
+                  style={{ height: `${slotH}px` }}
+                >
+                  <MatchCard match={match} />
+                </div>
+              ))}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {thirdPlace && (
