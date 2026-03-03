@@ -20,6 +20,7 @@ export function GenerateBracketButton({
       await action();
     } catch (e) {
       setError(e instanceof Error ? e.message : "エラーが発生しました");
+    } finally {
       setPending(false);
     }
   }
