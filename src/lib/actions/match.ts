@@ -62,19 +62,27 @@ export async function updateMatchResult(
   const gatherTime = formData.get("gatherTime") as string;
   const memo = formData.get("memo") as string;
 
+  const useManualWinner = formData.get("useManualWinner") as string;
+  const winnerChoice = formData.get("winnerChoice") as string;
+
   const hScore = homeScore !== "" ? parseInt(homeScore) : null;
   const aScore = awayScore !== "" ? parseInt(awayScore) : null;
 
-  // 勝者自動判定
+  // 勝者判定
   let winnerId: string | null = null;
-  if (hScore !== null && aScore !== null && status === "FINISHED") {
+  if (status === "FINISHED") {
     const match = await prisma.match.findUnique({
       where: { id: matchId },
       select: { homeTeamId: true, awayTeamId: true },
     });
     if (match) {
-      if (hScore > aScore) winnerId = match.homeTeamId;
-      else if (aScore > hScore) winnerId = match.awayTeamId;
+      if (useManualWinner === "1") {
+        // 手動指定
+        winnerId = winnerChoice === "home" ? match.homeTeamId : match.awayTeamId;
+      } else if (hScore !== null && aScore !== null && hScore !== aScore) {
+        // スコアで自動判定
+        winnerId = hScore > aScore ? match.homeTeamId : match.awayTeamId;
+      }
     }
   }
 

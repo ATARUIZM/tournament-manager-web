@@ -19,6 +19,24 @@ export function MatchRow({
 }) {
   const [editing, setEditing] = useState(false);
 
+  // 勝者手動指定の初期状態を計算
+  const initManualWinner = (() => {
+    if (!match.winner) return false;
+    const h = match.homeScore;
+    const a = match.awayScore;
+    if (h !== null && a !== null && h !== a) {
+      // スコアで決まる場合は手動指定不要（ただし実際の勝者が一致しているか確認）
+      const expectedId = h > a ? match.homeTeamId : match.awayTeamId;
+      return match.winnerId !== expectedId;
+    }
+    return true; // 引き分けまたはスコアなしで勝者あり → 手動
+  })();
+
+  const [manualWinner, setManualWinner] = useState(initManualWinner);
+  const [winnerChoice, setWinnerChoice] = useState<"home" | "away">(
+    match.winnerId === match.homeTeamId ? "home" : "away"
+  );
+
   const statusLabel: Record<MatchStatus, string> = {
     SCHEDULED: "予定",
     FINISHED: "終了",
@@ -137,6 +155,42 @@ export function MatchRow({
               <option value="CANCELED">中止</option>
             </select>
           </div>
+        </div>
+        {/* 勝者手動指定 */}
+        <div className="space-y-1.5">
+          <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={manualWinner}
+              onChange={(e) => setManualWinner(e.target.checked)}
+            />
+            勝者を手動で指定する（引き分け・ジャンケンなど）
+          </label>
+          {manualWinner && (
+            <div className="flex items-center gap-4 pl-5">
+              <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                <input
+                  type="radio"
+                  name="winnerChoice"
+                  value="home"
+                  checked={winnerChoice === "home"}
+                  onChange={() => setWinnerChoice("home")}
+                />
+                {match.homeTeam?.name || "ホーム"}
+              </label>
+              <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                <input
+                  type="radio"
+                  name="winnerChoice"
+                  value="away"
+                  checked={winnerChoice === "away"}
+                  onChange={() => setWinnerChoice("away")}
+                />
+                {match.awayTeam?.name || "アウェイ"}
+              </label>
+            </div>
+          )}
+          <input type="hidden" name="useManualWinner" value={manualWinner ? "1" : "0"} />
         </div>
         <div className="grid grid-cols-3 gap-3">
           <div>
