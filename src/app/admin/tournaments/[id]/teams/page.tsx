@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { createTeamAndEntry } from "@/lib/actions/team";
 import { TeamSortableList } from "@/components/TeamSortableList";
+import { BracketView } from "@/components/BracketView";
+import { computeBracketPreview } from "@/lib/bracketPreview";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +27,19 @@ export default async function AdminTeamsPage({
 
   const createAction = createTeamAndEntry.bind(null, id);
 
+  // トーナメント形式の場合のみプレビュー計算
+  const preview =
+    tournament.format === "TOURNAMENT" && tournament.entries.length >= 2
+      ? computeBracketPreview(
+          tournament.entries.map((e) => ({
+            teamId: e.teamId,
+            teamName: e.team.name,
+            isBye: e.isBye,
+          })),
+          tournament.thirdPlaceMatch
+        )
+      : null;
+
   return (
     <div>
       <h2 className="text-lg font-bold mb-2">
@@ -44,6 +59,19 @@ export default async function AdminTeamsPage({
           format={tournament.format}
         />
       </div>
+
+      {/* トーナメント表プレビュー（生成前シミュレーション） */}
+      {preview && (
+        <div className="bg-white rounded-lg shadow p-4 mb-8">
+          <h3 className="text-sm font-bold text-gray-700 mb-1">
+            トーナメント表プレビュー
+          </h3>
+          <p className="text-xs text-gray-400 mb-3">
+            現在のチーム順・BYE設定で生成した場合のイメージです。
+          </p>
+          <BracketView rounds={preview.rounds} thirdPlace={preview.thirdPlace} />
+        </div>
+      )}
 
       {/* 新規チーム追加 */}
       <div className="bg-white rounded-lg shadow p-6">

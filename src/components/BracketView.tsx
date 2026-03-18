@@ -6,7 +6,7 @@ const SLOT_H = 80;      // px: 1回戦の各ノードに割り当てる高さ
 const CONNECTOR_W = 28; // px: ラウンド間のSVGコネクター幅
 const CARD_W = 192;     // px: カード幅 (= w-48)
 
-type BracketMatch = {
+export type BracketMatch = {
   id: string;
   homeTeam: string;
   awayTeam: string;
@@ -17,13 +17,13 @@ type BracketMatch = {
   isBye: boolean;
 };
 
-type BracketRound = {
+export type BracketRound = {
   round: number;
   label: string;
   matches: BracketMatch[];
 };
 
-type ThirdPlace = {
+export type ThirdPlace = {
   homeTeam: string;
   awayTeam: string;
   homeScore: number | null;

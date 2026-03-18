@@ -9,6 +9,7 @@ import { MatchRow } from "@/components/MatchRow";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { MatchCreateForm } from "@/components/MatchCreateForm";
 import { GenerateBracketButton } from "@/components/GenerateBracketButton";
+import { BracketView } from "@/components/BracketView";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,15 @@ export default async function AdminMatchesPage({
         include: { homeTeam: true, awayTeam: true, winner: true },
         orderBy: [{ roundNumber: "asc" }, { matchDate: "asc" }],
       },
+      bracketNodes: {
+        include: {
+          match: {
+            include: { homeTeam: true, awayTeam: true, winner: true },
+          },
+          seedTeam: true,
+        },
+        orderBy: [{ round: "asc" }, { position: "asc" }],
+      },
     },
   });
 
@@ -39,6 +49,55 @@ export default async function AdminMatchesPage({
     teamId: e.teamId,
     teamName: e.team.name,
   }));
+
+  // トーナメント表データの構築
+  const bracketNodes = tournament.bracketNodes.filter((n) => !n.isThirdPlace);
+  const thirdPlaceNode = tournament.bracketNodes.find((n) => n.isThirdPlace);
+  const maxRound =
+    bracketNodes.length > 0 ? Math.max(...bracketNodes.map((n) => n.round)) : 0;
+
+  const roundsMap = new Map<number, typeof bracketNodes>();
+  for (const node of bracketNodes) {
+    const list = roundsMap.get(node.round) ?? [];
+    list.push(node);
+    roundsMap.set(node.round, list);
+  }
+
+  const roundLabel = (round: number, max: number) => {
+    if (round === max) return "決勝";
+    if (round === max - 1) return "準決勝";
+    if (round === max - 2) return "準々決勝";
+    return `${round}回戦`;
+  };
+
+  const bracketRounds = Array.from(roundsMap.entries()).map(
+    ([round, roundNodes]) => ({
+      round,
+      label: roundLabel(round, maxRound),
+      matches: roundNodes.map((n) => ({
+        id: n.id,
+        homeTeam: n.isBye ? (n.seedTeam?.name ?? "") : (n.match?.homeTeam?.name ?? ""),
+        awayTeam: n.isBye ? "" : (n.match?.awayTeam?.name ?? ""),
+        homeScore: n.match?.homeScore ?? null,
+        awayScore: n.match?.awayScore ?? null,
+        winner: n.match?.winner?.name ?? null,
+        status: n.match?.status ?? (n.isBye ? "FINISHED" : "SCHEDULED"),
+        isBye: n.isBye,
+      })),
+    })
+  );
+
+  const thirdPlaceData =
+    thirdPlaceNode?.match
+      ? {
+          homeTeam: thirdPlaceNode.match.homeTeam?.name ?? "",
+          awayTeam: thirdPlaceNode.match.awayTeam?.name ?? "",
+          homeScore: thirdPlaceNode.match.homeScore,
+          awayScore: thirdPlaceNode.match.awayScore,
+          winner: thirdPlaceNode.match.winner?.name ?? null,
+          status: thirdPlaceNode.match.status,
+        }
+      : null;
 
   return (
     <div>
@@ -73,6 +132,14 @@ export default async function AdminMatchesPage({
           )}
         </div>
       </div>
+
+      {/* トーナメント表プレビュー */}
+      {tournament.format === "TOURNAMENT" && bracketRounds.length > 0 && (
+        <div className="bg-white rounded-lg shadow p-4 mb-6">
+          <h3 className="text-sm font-bold text-gray-700 mb-3">トーナメント表</h3>
+          <BracketView rounds={bracketRounds} thirdPlace={thirdPlaceData} />
+        </div>
+      )}
 
       {/* 試合一覧 */}
       <div className="space-y-2 mb-8">
