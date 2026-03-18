@@ -4,6 +4,7 @@ import { createTeamAndEntry } from "@/lib/actions/team";
 import { TeamSortableList } from "@/components/TeamSortableList";
 import { BracketView } from "@/components/BracketView";
 import { computeBracketPreview } from "@/lib/bracketPreview";
+import { TeamCreateForm } from "@/components/TeamCreateForm";
 
 export const dynamic = "force-dynamic";
 
@@ -74,47 +75,7 @@ export default async function AdminTeamsPage({
       )}
 
       {/* 新規チーム追加 */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="font-bold mb-3">新規チーム追加</h3>
-        <form action={createAction} className="space-y-3 max-w-md">
-          <div>
-            <label className="block text-sm font-medium mb-1">チーム名 *</label>
-            <input
-              name="name"
-              required
-              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">代表者名</label>
-            <input
-              name="representative"
-              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">連絡先</label>
-            <input
-              name="contact"
-              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">メモ</label>
-            <textarea
-              name="memo"
-              rows={2}
-              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <button
-            type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm"
-          >
-            追加
-          </button>
-        </form>
-      </div>
+      <TeamCreateForm action={createAction} />
     </div>
   );
 }
