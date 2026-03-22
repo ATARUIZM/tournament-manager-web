@@ -23,7 +23,16 @@ export function ScheduleFilter({
   }
 
   return (
-    <div className="flex flex-wrap gap-3 text-sm">
+    <div className="flex flex-wrap gap-3 text-sm items-center">
+      <label className="flex items-center gap-1.5 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          defaultChecked={searchParams.get("hideTbd") === "1"}
+          onChange={(e) => updateFilter("hideTbd", e.target.checked ? "1" : "")}
+          className="w-4 h-4"
+        />
+        TBD vs TBD を非表示
+      </label>
       <input
         type="date"
         defaultValue={searchParams.get("date") || ""}

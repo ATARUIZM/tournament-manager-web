@@ -9,7 +9,7 @@ export default async function SchedulePage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ date?: string; venue?: string; status?: string }>;
+  searchParams: Promise<{ date?: string; venue?: string; status?: string; hideTbd?: string }>;
 }) {
   const { slug } = await params;
   const filters = await searchParams;
@@ -46,6 +46,10 @@ export default async function SchedulePage({
 
   if (filters.status) {
     matches = matches.filter((m) => m.status === filters.status);
+  }
+
+  if (filters.hideTbd === "1") {
+    matches = matches.filter((m) => m.homeTeam || m.awayTeam);
   }
 
   // 会場リスト（フィルタ用）
