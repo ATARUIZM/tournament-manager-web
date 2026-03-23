@@ -1,6 +1,7 @@
 "use client";
 
 import { registerUser } from "@/lib/actions/auth";
+import { isRedirectError } from "next/dist/client/components/redirect";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -15,6 +16,7 @@ export default function RegisterPage() {
     try {
       await registerUser(new FormData(e.currentTarget));
     } catch (err) {
+      if (isRedirectError(err)) throw err;
       setError(err instanceof Error ? err.message : "エラーが発生しました");
       setPending(false);
     }
