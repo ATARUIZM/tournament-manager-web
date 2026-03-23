@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -10,7 +10,6 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered");
 
@@ -26,7 +25,7 @@ function LoginForm() {
     });
 
     if (res.ok) {
-      router.push("/admin/tournaments");
+      window.location.href = "/admin/tournaments";
     } else {
       const data = await res.json();
       setError(data.error || "ログインに失敗しました");
