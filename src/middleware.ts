@@ -8,8 +8,8 @@ const SECRET = new TextEncoder().encode(
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // /admin/login はスキップ
-  if (pathname === "/admin/login") {
+  // 認証不要ページはスキップ
+  if (pathname === "/admin/login" || pathname === "/admin/register") {
     return NextResponse.next();
   }
 
