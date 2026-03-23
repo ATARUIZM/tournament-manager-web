@@ -12,7 +12,7 @@ export default async function AdminTournamentLayout({
   const { id } = await params;
   const tournament = await prisma.tournament.findUnique({
     where: { id },
-    select: { id: true, name: true, format: true },
+    select: { id: true, name: true, format: true, slug: true },
   });
 
   if (!tournament) notFound();
@@ -34,6 +34,13 @@ export default async function AdminTournamentLayout({
           &larr; 大会一覧
         </Link>
         <h1 className="text-xl font-bold mt-1">{tournament.name}</h1>
+        <Link
+          href={`/tournaments/${tournament.slug}`}
+          target="_blank"
+          className="text-xs text-blue-500 hover:text-blue-700 hover:underline"
+        >
+          公開ページを確認 →
+        </Link>
       </div>
       <nav className="flex gap-1 border-b mb-6">
         {tabs.map((tab) => (
