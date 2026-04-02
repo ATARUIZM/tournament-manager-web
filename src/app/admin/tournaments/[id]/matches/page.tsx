@@ -25,7 +25,11 @@ export default async function AdminMatchesPage({
       entries: { include: { team: true }, orderBy: { sortOrder: "asc" } },
       matches: {
         include: { homeTeam: true, awayTeam: true, winner: true },
-        orderBy: [{ roundNumber: "asc" }, { matchDate: "asc" }],
+        orderBy: [
+          { matchDate: { sort: "asc", nulls: "last" } },
+          { startTime: { sort: "asc", nulls: "last" } },
+          { roundNumber: { sort: "asc", nulls: "last" } },
+        ],
       },
       bracketNodes: {
         include: {

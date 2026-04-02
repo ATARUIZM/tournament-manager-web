@@ -19,7 +19,11 @@ export default async function SchedulePage({
     include: {
       matches: {
         include: { homeTeam: true, awayTeam: true },
-        orderBy: [{ matchDate: "asc" }, { startTime: "asc" }],
+        orderBy: [
+          { matchDate: { sort: "asc", nulls: "last" } },
+          { startTime: { sort: "asc", nulls: "last" } },
+          { roundNumber: { sort: "asc", nulls: "last" } },
+        ],
       },
     },
   });
