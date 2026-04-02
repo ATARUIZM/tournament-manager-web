@@ -21,8 +21,9 @@ export default async function SchedulePage({
         include: { homeTeam: true, awayTeam: true },
         orderBy: [
           { matchDate: { sort: "asc", nulls: "last" } },
-          { startTime: { sort: "asc", nulls: "last" } },
           { roundNumber: { sort: "asc", nulls: "last" } },
+          { startTime: { sort: "asc", nulls: "last" } },
+          { bracketNode: { position: "asc" } },
         ],
       },
     },
